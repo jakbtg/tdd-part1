@@ -18,22 +18,22 @@ function createApp(database) {
     const age = req.query.age;
     const type = req.query.type;
     const baseCost = database.findBasePriceByType(type).cost;
-    const date = parsePlainDate(req.query.date);
-    const cost = calculateCost(age, type, baseCost, date);
+    const date = parseDate(req.query.date);
+    const cost = calculateCost(age, type, date, baseCost);
     res.json({ cost });
   });
 
-  function parsePlainDate(dateString) {
+  function parseDate(dateString) {
     if (dateString) {
-      return Temporal.PlainDate.from(dateString);
+      return new Date(dateString);
     }
   }
 
-  function calculateCost(age, type, baseCost, date) {
+  function calculateCost(age, type, date, baseCost) {
     if (type === "night") {
       return calculateCostForNightTicket(age, baseCost);
     } else {
-      return calculateCostForDayTicket(age, baseCost, date);
+      return calculateCostForDayTicket(age, date, baseCost);
     }
   }
 
@@ -50,7 +50,7 @@ function createApp(database) {
     return baseCost;
   }
 
-  function calculateCostForDayTicket(age, baseCost, date) {
+  function calculateCostForDayTicket(age, date, baseCost) {
     let reduction = calculateReduction(date);
     if (age === undefined) {
       return Math.ceil(baseCost * (1 - reduction / 100));
@@ -76,14 +76,19 @@ function createApp(database) {
   }
 
   function isMonday(date) {
-    return date.dayOfWeek === 1;
+    return date.getDay() === 1;
   }
 
   function isHoliday(date) {
     const holidays = database.getHolidays();
     for (let row of holidays) {
-      let holiday = Temporal.PlainDate.from(row.holiday);
-      if (date && date.equals(holiday)) {
+      let holiday = new Date(row.holiday);
+      if (
+        date &&
+        date.getFullYear() === holiday.getFullYear() &&
+        date.getMonth() === holiday.getMonth() &&
+        date.getDate() === holiday.getDate()
+      ) {
         return true;
       }
     }
